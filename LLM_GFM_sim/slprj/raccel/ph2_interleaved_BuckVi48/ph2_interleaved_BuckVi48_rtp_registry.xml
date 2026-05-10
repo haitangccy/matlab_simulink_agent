@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MF0 version="1.1" packageUris="http://schema.mathworks.com/mf0/slsa_mm_rtp_registry/R2023a">
+  <slsa.mm.rtpregistry.ModelMetadata type="slsa.mm.rtpregistry.ModelMetadata" uuid="9ad12a6e-6d0e-4ed2-adb7-87dc8ab3605d">
+    <modelName>ph2_interleaved_BuckVi48</modelName>
+  </slsa.mm.rtpregistry.ModelMetadata>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="1b053080-5cfd-4c6d-bbfd-9910bc4c07ea">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator1/Model/Constant2</blockPath>
+    <name>Value</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="2432c4a0-4e33-48e6-98fa-c2dc9e04842c"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="5bfea1be-aecc-443d-9a41-b09902b4d5bf">
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="035b06a7-2e05-41de-b42e-e6b5a89b4a1f"/>
+    <valueIndices>13</valueIndices>
+    <valueIndices>28</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.SFunctionParameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="035b06a7-2e05-41de-b42e-e6b5a89b4a1f">
+    <isInlined>true</isInlined>
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="ace41595-c566-4c7b-bdd3-f577dc83f510"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="5bfea1be-aecc-443d-9a41-b09902b4d5bf"/>
+  </slsa.mm.rtpregistry.SFunctionParameter>
+  <slsa.mm.rtpregistry.SFunctionParameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="943befbb-691e-4d67-b41b-553319083e0d">
+    <isInlined>true</isInlined>
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="2f718999-dac8-453f-bc08-fd4005e21eab"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="e672af1a-6568-41c8-a21a-e52d1ec54197"/>
+  </slsa.mm.rtpregistry.SFunctionParameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="ace41595-c566-4c7b-bdd3-f577dc83f510">
+    <blockPath>ph2_interleaved_BuckVi48/powergui/EquivalentModel1/State-Space</blockPath>
+    <name>AS_param</name>
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="035b06a7-2e05-41de-b42e-e6b5a89b4a1f"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="2f2bf65c-a10e-4985-9e6d-23129585b0b2">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="2432c4a0-4e33-48e6-98fa-c2dc9e04842c"/>
+    <valueIndices>223</valueIndices>
+    <valueIndices>223</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="af6e2a99-2b6b-4295-aa9a-3bedbdae6774">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="1d3ed67d-7ee2-44f1-851d-dd72393c0480"/>
+    <valueIndices>216</valueIndices>
+    <valueIndices>216</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="2f718999-dac8-453f-bc08-fd4005e21eab">
+    <blockPath>ph2_interleaved_BuckVi48/powergui/EquivalentModel1/State-Space</blockPath>
+    <name>BS_param</name>
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="943befbb-691e-4d67-b41b-553319083e0d"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="e672af1a-6568-41c8-a21a-e52d1ec54197">
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="943befbb-691e-4d67-b41b-553319083e0d"/>
+    <valueIndices>29</valueIndices>
+    <valueIndices>64</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.SFunctionParameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="38afab62-3839-46fd-9e90-094c73557664">
+    <isInlined>true</isInlined>
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="910e4a7a-bece-4458-a925-0d0eb422712b"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="47d703a2-ed5d-4184-9e3f-6122d16d910d"/>
+  </slsa.mm.rtpregistry.SFunctionParameter>
+  <slsa.mm.rtpregistry.SFunctionParameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="11412d76-f41d-4618-bd86-4303fc522efd">
+    <isInlined>true</isInlined>
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="829e56fb-e4f9-4beb-853c-7ef7076d8ee8"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="53f151f2-42c8-4b13-895e-8cb54fa60172"/>
+  </slsa.mm.rtpregistry.SFunctionParameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="910e4a7a-bece-4458-a925-0d0eb422712b">
+    <blockPath>ph2_interleaved_BuckVi48/powergui/EquivalentModel1/State-Space</blockPath>
+    <name>CS_param</name>
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="38afab62-3839-46fd-9e90-094c73557664"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="47d703a2-ed5d-4184-9e3f-6122d16d910d">
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="38afab62-3839-46fd-9e90-094c73557664"/>
+    <valueIndices>65</valueIndices>
+    <valueIndices>108</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="829e56fb-e4f9-4beb-853c-7ef7076d8ee8">
+    <blockPath>ph2_interleaved_BuckVi48/powergui/EquivalentModel1/State-Space</blockPath>
+    <name>DS_param</name>
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="11412d76-f41d-4618-bd86-4303fc522efd"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="53f151f2-42c8-4b13-895e-8cb54fa60172">
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="11412d76-f41d-4618-bd86-4303fc522efd"/>
+    <valueIndices>109</valueIndices>
+    <valueIndices>207</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.SFunctionParameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="9966e0eb-4ce4-4f1a-8506-14eaadcec97b">
+    <isInlined>true</isInlined>
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="7447fcea-25ed-4d1c-abf7-acda9932e094"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="0af9e069-58e0-449f-b8f5-33b3bc2658d2"/>
+  </slsa.mm.rtpregistry.SFunctionParameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="7447fcea-25ed-4d1c-abf7-acda9932e094">
+    <blockPath>ph2_interleaved_BuckVi48/powergui/EquivalentModel1/State-Space</blockPath>
+    <name>X0_param</name>
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="9966e0eb-4ce4-4f1a-8506-14eaadcec97b"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="cac7d16f-ae4b-489e-952c-cfd880be9234">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator/Model/Constant3</blockPath>
+    <name>Value</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="1d3ed67d-7ee2-44f1-851d-dd72393c0480"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="0af9e069-58e0-449f-b8f5-33b3bc2658d2">
+    <parameter type="slsa.mm.rtpregistry.SFunctionParameter" uuid="9966e0eb-4ce4-4f1a-8506-14eaadcec97b"/>
+    <valueIndices>208</valueIndices>
+    <valueIndices>211</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="1d3ed67d-7ee2-44f1-851d-dd72393c0480">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="cac7d16f-ae4b-489e-952c-cfd880be9234"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="af6e2a99-2b6b-4295-aa9a-3bedbdae6774"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="a2df42bf-9fa6-48b3-93f3-1dfc2982f737">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="81529020-3c8e-4892-9d02-06e5f66424e3"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="fb08ad24-d56e-4d07-b429-e6f3f1b94413"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="81529020-3c8e-4892-9d02-06e5f66424e3">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator/Model/Constant2</blockPath>
+    <name>Value</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="a2df42bf-9fa6-48b3-93f3-1dfc2982f737"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="fb08ad24-d56e-4d07-b429-e6f3f1b94413">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="a2df42bf-9fa6-48b3-93f3-1dfc2982f737"/>
+    <valueIndices>217</valueIndices>
+    <valueIndices>217</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="25a63de3-2791-4cad-958a-ff899ed0a2c2">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="6a6f21ee-0822-432e-989c-82e8c727bfba"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="1e4a0ea2-f7e4-4047-8a4a-7c4c6e862517"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="6a6f21ee-0822-432e-989c-82e8c727bfba">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator/Model/1\ib1</blockPath>
+    <name>Gain</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="25a63de3-2791-4cad-958a-ff899ed0a2c2"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="1e4a0ea2-f7e4-4047-8a4a-7c4c6e862517">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="25a63de3-2791-4cad-958a-ff899ed0a2c2"/>
+    <valueIndices>218</valueIndices>
+    <valueIndices>218</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="7701f8fa-8090-4029-9aa4-91f22c68bf43">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="e3ad1d04-2995-4d70-8463-5b5d1d8e28fb"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="2d3396ad-37e3-481b-81e9-b6389f984f16"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="e3ad1d04-2995-4d70-8463-5b5d1d8e28fb">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator1/Model/Constant3</blockPath>
+    <name>Value</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="7701f8fa-8090-4029-9aa4-91f22c68bf43"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="2d3396ad-37e3-481b-81e9-b6389f984f16">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="7701f8fa-8090-4029-9aa4-91f22c68bf43"/>
+    <valueIndices>222</valueIndices>
+    <valueIndices>222</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="2432c4a0-4e33-48e6-98fa-c2dc9e04842c">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="1b053080-5cfd-4c6d-bbfd-9910bc4c07ea"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="2f2bf65c-a10e-4985-9e6d-23129585b0b2"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.Parameter type="slsa.mm.rtpregistry.Parameter" uuid="8467dc04-5a81-4114-9b95-cb4545c8a1a9">
+    <id type="slsa.mm.rtpregistry.BlockParameterId" uuid="a083c4a2-3898-47a2-8cdf-1c10e0c7f5fb"/>
+    <rtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="9791e31f-e951-45f7-bba3-230753f94255"/>
+  </slsa.mm.rtpregistry.Parameter>
+  <slsa.mm.rtpregistry.BlockParameterId type="slsa.mm.rtpregistry.BlockParameterId" uuid="a083c4a2-3898-47a2-8cdf-1c10e0c7f5fb">
+    <blockPath>ph2_interleaved_BuckVi48/Sawtooth Generator1/Model/1\ib1</blockPath>
+    <name>Gain</name>
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="8467dc04-5a81-4114-9b95-cb4545c8a1a9"/>
+  </slsa.mm.rtpregistry.BlockParameterId>
+  <slsa.mm.rtpregistry.RtpLocation type="slsa.mm.rtpregistry.RtpLocation" uuid="9791e31f-e951-45f7-bba3-230753f94255">
+    <parameter type="slsa.mm.rtpregistry.Parameter" uuid="8467dc04-5a81-4114-9b95-cb4545c8a1a9"/>
+    <valueIndices>224</valueIndices>
+    <valueIndices>224</valueIndices>
+  </slsa.mm.rtpregistry.RtpLocation>
+</MF0>
