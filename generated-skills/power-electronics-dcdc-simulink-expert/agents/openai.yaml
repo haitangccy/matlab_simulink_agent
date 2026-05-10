@@ -1,0 +1,7 @@
+interface:
+  display_name: "DC/DC 仿真调参专家"
+  short_description: "DC/DC 设计与 Simulink PI 调参"
+  default_prompt: "Use $power-electronics-dcdc-simulink-expert 帮我基于 Simulink 波形调试 Buck 或 LLC 变换器。"
+
+policy:
+  allow_implicit_invocation: true
