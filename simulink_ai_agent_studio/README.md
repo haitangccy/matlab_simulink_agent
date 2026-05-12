@@ -133,8 +133,8 @@ npm start
 
 然后访问：
 
-```text
-http://localhost:3001
+```html
+index
 ```
 
 也可以手动查找并关闭占用端口的进程：
