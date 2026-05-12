@@ -1,0 +1,14 @@
+{
+  "name": "simagent-bridge",
+  "version": "1.0.0",
+  "description": "Local MCP Bridge for MATLAB/Simulink Agentic Toolkit",
+  "main": "server/bridge.js",
+  "scripts": {
+    "start": "node server/bridge.js",
+    "dev": "node --watch server/bridge.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

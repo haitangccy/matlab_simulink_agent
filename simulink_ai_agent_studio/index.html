@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SimAgent — Simulink AI 智能体</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:      #090d12;
+    --bg2:     #0e1420;
+    --bg3:     #141c2b;
+    --bg4:     #1a2437;
+    --border:  rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.11);
+    --acc:     #00d4a1;
+    --acc2:    #1a7fff;
+    --acc3:    #ff6b35;
+    --text:    #dde4ef;
+    --text2:   #7e8fa6;
+    --text3:   #3e4f64;
+    --mono:    'JetBrains Mono', monospace;
+    --ui:      'Syne', sans-serif;
+    --r:       9px;
+    --sidebar: 256px;
+    --hdr:     50px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--ui);
+       height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+  /* ── Header ── */
+  header{
+    height:var(--hdr);display:flex;align-items:center;
+    padding:0 14px;gap:10px;
+    border-bottom:1px solid var(--border);background:var(--bg2);
+    flex-shrink:0;z-index:20;
+  }
+  .logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700}
+  .logo-icon{
+    width:28px;height:28px;background:var(--acc);border-radius:6px;
+    display:grid;place-items:center;font-size:12px;font-weight:700;color:#000
+  }
+  .logo em{color:var(--acc);font-style:normal}
+  .vsep{width:1px;height:18px;background:var(--border2);margin:0 2px}
+
+  /* MCP badge */
+  .mcp-badge{
+    display:flex;align-items:center;gap:5px;font-size:11px;
+    color:var(--text2);font-family:var(--mono);
+    padding:3px 10px;border:1px solid var(--border2);
+    border-radius:20px;cursor:pointer;transition:all .2s
+  }
+  .mcp-badge:hover{border-color:var(--acc);color:var(--acc)}
+  .mcp-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:background .3s}
+  .mcp-dot.on{background:var(--acc);animation:pulse 2s infinite}
+  .mcp-dot.err{background:var(--acc3)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .hdr-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+  .sel-wrap{position:relative}
+  .sel-wrap select{
+    appearance:none;background:var(--bg3);border:1px solid var(--border2);
+    color:var(--text);font-family:var(--mono);font-size:11px;
+    padding:4px 26px 4px 9px;border-radius:6px;cursor:pointer;outline:none;
+    transition:border-color .2s
+  }
+  .sel-wrap select:hover{border-color:var(--acc2)}
+  .sel-wrap::after{
+    content:'▾';position:absolute;right:7px;top:50%;transform:translateY(-50%);
+    font-size:10px;color:var(--text2);pointer-events:none
+  }
+  .ibtn{
+    width:28px;height:28px;background:none;
+    border:1px solid var(--border2);border-radius:6px;
+    cursor:pointer;color:var(--text2);font-size:14px;
+    display:grid;place-items:center;transition:all .15s
+  }
+  .ibtn:hover{border-color:var(--border);color:var(--text);background:var(--bg3)}
+
+  /* ── Layout ── */
+  .wrap{display:flex;flex:1;overflow:hidden}
+
+  /* ── Sidebar ── */
+  .sidebar{
+    width:var(--sidebar);background:var(--bg2);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;flex-shrink:0;
+    transition:width .25s;overflow:hidden
+  }
+  .sidebar.collapsed{width:0}
+
+  .sb-sec{padding:10px;border-bottom:1px solid var(--border)}
+  .sb-lbl{
+    font-size:10px;font-weight:600;letter-spacing:.08em;
+    color:var(--text3);text-transform:uppercase;
+    margin-bottom:7px;padding:0 3px
+  }
+  .ws-row{display:flex;gap:5px;margin-bottom:7px}
+  .ws-row input{
+    flex:1;background:var(--bg3);border:1px solid var(--border2);
+    border-radius:6px;color:var(--text);font-family:var(--mono);font-size:11px;
+    padding:4px 7px;outline:none
+  }
+  .ws-row input:focus{border-color:var(--acc2)}
+  .btn-xs{
+    background:var(--bg4);border:1px solid var(--border2);
+    color:var(--text2);font-family:var(--ui);font-size:11px;
+    padding:3px 7px;border-radius:5px;cursor:pointer;
+    white-space:nowrap;transition:all .15s
+  }
+  .btn-xs:hover{border-color:var(--acc);color:var(--acc)}
+
+  .ftree{display:flex;flex-direction:column;gap:2px;overflow-y:auto;max-height:210px}
+  .fitem{
+    display:flex;align-items:center;gap:5px;padding:4px 5px;
+    border-radius:5px;cursor:pointer;font-size:12px;color:var(--text2);
+    transition:all .12s;border:1px solid transparent
+  }
+  .fitem:hover{background:var(--bg3);color:var(--text)}
+  .fitem.sel{background:rgba(0,212,161,.07);border-color:rgba(0,212,161,.22);color:var(--acc)}
+  .ficon{font-size:12px;width:14px;text-align:center}
+  .fname{font-family:var(--mono);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fbadge{font-size:9px;padding:1px 4px;border-radius:3px;font-weight:600;text-transform:uppercase}
+  .b-slx{background:rgba(26,127,255,.14);color:var(--acc2)}
+  .b-mat{background:rgba(255,107,53,.14);color:var(--acc3)}
+  .b-m{background:rgba(0,212,161,.1);color:var(--acc)}
+
+  .sb-lbl2{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:10px 13px 5px}
+  .sess-list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex:1;padding:0 10px}
+  .sitem{
+    padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
+    color:var(--text2);transition:all .12s;border:1px solid transparent
+  }
+  .sitem:hover{background:var(--bg3);color:var(--text)}
+  .sitem.active{background:rgba(0,212,161,.06);border-color:rgba(0,212,161,.18);color:var(--text)}
+  .stitle{font-weight:500;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stime{font-size:10px;color:var(--text3);font-family:var(--mono)}
+  .new-sess{
+    margin:10px;padding:7px;background:none;
+    border:1px dashed var(--border2);color:var(--text3);font-family:var(--ui);
+    font-size:12px;border-radius:7px;cursor:pointer;transition:all .2s;
+    display:flex;align-items:center;justify-content:center;gap:5px
+  }
+  .new-sess:hover{border-color:var(--acc);color:var(--acc);background:rgba(0,212,161,.03)}
+
+  /* ── Chat ── */
+  .chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .msgs{flex:1;overflow-y:auto;padding:18px 0;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+  .msgs::-webkit-scrollbar{width:3px}
+  .msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  .mrow{display:flex;gap:10px;padding:0 22px;max-width:860px;width:100%;margin:0 auto}
+  .mrow.user{flex-direction:row-reverse}
+  .mavatar{
+    width:28px;height:28px;border-radius:7px;
+    display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0
+  }
+  .mavatar.ai{background:rgba(0,212,161,.13);color:var(--acc)}
+  .mavatar.user{background:rgba(26,127,255,.13);color:var(--acc2)}
+  .mbubble{
+    max-width:72%;padding:9px 13px;border-radius:11px;
+    font-size:13px;line-height:1.65;border:1px solid var(--border)
+  }
+  .mrow.ai .mbubble{background:var(--bg2);border-radius:3px 11px 11px 11px}
+  .mrow.user .mbubble{background:var(--bg3);border-radius:11px 3px 11px 11px}
+  .mbubble code{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.35);padding:1px 5px;border-radius:3px;color:var(--acc)}
+  .mbubble pre{
+    font-family:var(--mono);font-size:11px;line-height:1.5;
+    background:rgba(0,0,0,.4);border:1px solid var(--border2);
+    border-radius:7px;padding:10px;margin:7px 0;overflow-x:auto;color:var(--text2)
+  }
+  .mbubble pre code{background:none;padding:0;color:inherit}
+  .mtime{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;padding:0 3px}
+  .mrow.user .mtime{text-align:right}
+
+  /* tool events inside bubble */
+  .tool-event{
+    display:flex;align-items:flex-start;gap:6px;
+    font-family:var(--mono);font-size:11px;
+    padding:5px 8px;border-radius:5px;margin:4px 0;
+    border-left:2px solid;
+  }
+  .tool-event.call{background:rgba(255,107,53,.07);border-color:var(--acc3);color:#c07050}
+  .tool-event.result{background:rgba(0,212,161,.06);border-color:var(--acc);color:#60a090}
+  .tool-event.err{background:rgba(220,50,50,.07);border-color:#e05050;color:#e07070}
+  .tool-event.status{background:rgba(255,255,255,.03);border-color:var(--text3);color:var(--text3)}
+  .te-label{font-weight:500;flex-shrink:0}
+  .te-body{word-break:break-all;opacity:.85}
+  .ctx-tag{
+    display:inline-flex;align-items:center;gap:3px;
+    background:rgba(26,127,255,.1);border:1px solid rgba(26,127,255,.2);
+    color:var(--acc2);font-size:10px;font-family:var(--mono);
+    padding:1px 6px;border-radius:3px;margin-bottom:5px
+  }
+
+  /* thinking */
+  .thinking-row{display:flex;align-items:center;gap:8px;padding:0 22px;max-width:860px;width:100%;margin:0 auto}
+  .thinking-row .mavatar{background:rgba(0,212,161,.13);color:var(--acc)}
+  .tdots{display:flex;gap:3px}
+  .tdots span{width:4px;height:4px;background:var(--acc);border-radius:50%;animation:blink 1.2s infinite}
+  .tdots span:nth-child(2){animation-delay:.2s}
+  .tdots span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
+  .t-label{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+  /* empty */
+  .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px 20px}
+  .empty-icon{font-size:36px;opacity:.12}
+  .empty-title{font-size:17px;font-weight:600;color:var(--text2)}
+  .empty-sub{font-size:12.5px;color:var(--text3);text-align:center;max-width:340px;line-height:1.7}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:6px}
+  .chip{
+    padding:6px 13px;border:1px solid var(--border2);border-radius:18px;
+    font-size:12px;color:var(--text2);cursor:pointer;transition:all .14s
+  }
+  .chip:hover{border-color:var(--acc);color:var(--acc);background:rgba(0,212,161,.04)}
+
+  /* ── Input bar ── */
+  .input-bar{padding:10px 18px 14px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+  .input-inner{
+    max-width:820px;margin:0 auto;
+    background:var(--bg3);border:1px solid var(--border2);
+    border-radius:11px;overflow:hidden;transition:border-color .2s
+  }
+  .input-inner:focus-within{border-color:var(--acc)}
+  .att-row{display:flex;flex-wrap:wrap;gap:5px;padding:7px 10px 0;min-height:0}
+  .att-chip{
+    display:flex;align-items:center;gap:3px;
+    background:rgba(0,212,161,.07);border:1px solid rgba(0,212,161,.18);
+    color:var(--acc);font-size:10px;font-family:var(--mono);
+    padding:2px 7px;border-radius:4px
+  }
+  .att-chip button{background:none;border:none;cursor:pointer;color:inherit;opacity:.6;font-size:12px;padding:0 0 0 2px}
+  .att-chip button:hover{opacity:1}
+  .irow{display:flex;align-items:flex-end;gap:7px;padding:7px 9px}
+  textarea{
+    flex:1;background:none;border:none;outline:none;
+    color:var(--text);font-family:var(--ui);font-size:13px;line-height:1.5;
+    resize:none;min-height:21px;max-height:130px
+  }
+  textarea::placeholder{color:var(--text3)}
+  .send-btn{
+    width:30px;height:30px;background:var(--acc);border:none;border-radius:7px;
+    cursor:pointer;display:grid;place-items:center;font-size:15px;color:#000;
+    transition:all .14s;flex-shrink:0
+  }
+  .send-btn:hover{background:#00f0b8;transform:scale(1.04)}
+  .send-btn:active{transform:scale(.96)}
+  .send-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;transform:none}
+  .itoolbar{display:flex;align-items:center;gap:5px;padding:0 9px 7px;flex-wrap:wrap}
+  .ttoggle{
+    display:flex;align-items:center;gap:4px;padding:2px 7px;
+    border-radius:4px;font-size:11px;color:var(--text3);
+    cursor:pointer;border:1px solid transparent;transition:all .14s;user-select:none
+  }
+  .ttoggle:hover{color:var(--text2)}
+  .ttoggle.on{background:rgba(0,212,161,.07);border-color:rgba(0,212,161,.18);color:var(--acc)}
+  .tdot{width:5px;height:5px;border-radius:50%;background:currentColor}
+  .isep{flex:1}
+  .ccount{font-size:10px;color:var(--text3);font-family:var(--mono)}
+
+  /* ── Config panel ── */
+  .cfg-panel{
+    position:fixed;top:0;right:0;bottom:0;width:330px;
+    background:var(--bg2);border-left:1px solid var(--border2);
+    z-index:100;transform:translateX(100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    display:flex;flex-direction:column
+  }
+  .cfg-panel.open{transform:translateX(0)}
+  .cfg-hdr{padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .cfg-hdr h3{font-size:13px;font-weight:600;flex:1}
+  .cfg-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+  .cg{display:flex;flex-direction:column;gap:5px}
+  .clbl{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  .cinput{
+    background:var(--bg3);border:1px solid var(--border2);border-radius:6px;
+    color:var(--text);font-family:var(--mono);font-size:12px;
+    padding:6px 9px;outline:none;width:100%;transition:border-color .2s
+  }
+  .cinput:focus{border-color:var(--acc)}
+  .cinput::placeholder{color:var(--text3)}
+  .crow{display:flex;gap:7px}
+  .cbtn{
+    padding:8px;border-radius:7px;font-size:12px;font-weight:600;
+    cursor:pointer;transition:all .18s;border:none;font-family:var(--ui);
+    display:flex;align-items:center;justify-content:center;gap:5px
+  }
+  .cbtn.pri{background:var(--acc);color:#000}
+  .cbtn.pri:hover{background:#00f0b8}
+  .cbtn.sec{background:var(--bg4);color:var(--text2);border:1px solid var(--border2)}
+  .cbtn.sec:hover{border-color:var(--border);color:var(--text)}
+  .sline{
+    font-family:var(--mono);font-size:11px;
+    padding:7px 9px;border-radius:5px;border:1px solid var(--border);
+    background:var(--bg3);color:var(--text2);line-height:1.6;white-space:pre-wrap
+  }
+  .sline.ok{border-color:rgba(0,212,161,.28);color:var(--acc);background:rgba(0,212,161,.04)}
+  .sline.err{border-color:rgba(220,50,50,.3);color:#e07070;background:rgba(220,50,50,.04)}
+
+  /* tools list */
+  .tool-list{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto}
+  .tool-row{
+    display:flex;align-items:center;gap:7px;padding:4px 7px;
+    border-radius:5px;background:var(--bg3);font-size:11px;font-family:var(--mono);color:var(--text2)
+  }
+  .tool-row-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:75px;left:50%;transform:translateX(-50%) translateY(16px);
+    background:var(--bg4);border:1px solid var(--border2);
+    color:var(--text);font-size:12px;padding:7px 16px;
+    border-radius:18px;opacity:0;transition:all .22s;z-index:999;
+    font-family:var(--mono);pointer-events:none
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  ::-webkit-scrollbar{width:3px;height:3px}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">S∿</div>
+    <span>Sim<em>Agent</em></span>
+  </div>
+  <div class="vsep"></div>
+  <div class="mcp-badge" id="mcpBadge" onclick="toggleCfg()">
+    <div class="mcp-dot" id="mcpDot"></div>
+    <span id="mcpTxt">MCP 未连接</span>
+  </div>
+  <div class="hdr-right">
+    <div class="sel-wrap">
+      <select id="modelSel">
+        <option value="deepseek-ai/DeepSeek-V3" selected>DeepSeek-V3</option>
+        <option value="deepseek-ai/DeepSeek-R1">DeepSeek-R1</option>
+        <option value="Qwen/Qwen2.5-72B-Instruct">Qwen2.5-72B</option>
+      </select>
+    </div>
+    <button class="ibtn" onclick="toggleSidebar()" title="工作区">⊞</button>
+    <button class="ibtn" onclick="clearChat()" title="清除对话">↺</button>
+  </div>
+</header>
+
+<!-- Body -->
+<div class="wrap">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-sec">
+      <div class="sb-lbl">工作区文件</div>
+      <div class="ws-row">
+        <input type="text" id="wsPath" placeholder="C:/workspace" value="C:/workspace" />
+        <button class="btn-xs" onclick="scanWorkspace()">扫描</button>
+      </div>
+      <div class="ftree" id="ftree"></div>
+    </div>
+    <div class="sb-lbl2">历史对话</div>
+    <div class="sess-list" id="sessList"></div>
+    <button class="new-sess" onclick="newSession()">＋ 新建对话</button>
+  </aside>
+
+  <!-- Chat -->
+  <div class="chat">
+    <div class="msgs" id="msgs">
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">⎔</div>
+        <div class="empty-title">Simulink AI 智能体</div>
+        <div class="empty-sub">通过本地 MCP Bridge 直连 MATLAB/Simulink，真实执行仿真操作。</div>
+        <div class="chips">
+          <div class="chip" onclick="useChip(this)">打开 model.slx 运行仿真</div>
+          <div class="chip" onclick="useChip(this)">列出工作区所有模型</div>
+          <div class="chip" onclick="useChip(this)">设置 PID 控制器参数</div>
+          <div class="chip" onclick="useChip(this)">获取最近仿真的结果数据</div>
+          <div class="chip" onclick="useChip(this)">检查模型连接错误</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-bar">
+      <div class="input-inner">
+        <div class="att-row" id="attRow"></div>
+        <div class="irow">
+          <textarea id="msgInput" rows="1" placeholder="向 Simulink 智能体发送指令..."
+            onkeydown="handleKey(event)" oninput="onInput(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMsg()">↑</button>
+        </div>
+        <div class="itoolbar">
+          <div class="ttoggle on" id="tgl-sim" onclick="toggleTool('sim')">
+            <div class="tdot"></div> Simulink MCP
+          </div>
+          <div class="ttoggle on" id="tgl-ws" onclick="toggleTool('ws')">
+            <div class="tdot"></div> 工作区上下文
+          </div>
+          <div class="isep"></div>
+          <span class="ccount" id="ccount">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Config Panel -->
+<div class="cfg-panel" id="cfgPanel">
+  <div class="cfg-hdr">
+    <h3>MCP Bridge 配置</h3>
+    <button class="ibtn" onclick="toggleCfg()">✕</button>
+  </div>
+  <div class="cfg-body">
+    <div class="cg">
+      <div class="clbl">LLM API Base</div>
+      <input class="cinput" id="apiBase" value="https://api.siliconflow.cn/v1" placeholder="https://api.siliconflow.cn/v1" />
+    </div>
+    <div class="cg">
+      <div class="clbl">LLM API Key</div>
+      <input class="cinput" id="apiKey" type="password" placeholder="你的 SiliconFlow API Key" />
+    </div>
+    <div class="cg">
+      <div class="clbl">Default Model</div>
+      <input class="cinput" id="modelInput" list="modelOptions" value="deepseek-ai/DeepSeek-V3" placeholder="deepseek-ai/DeepSeek-V3" />
+      <datalist id="modelOptions">
+        <option value="deepseek-ai/DeepSeek-V3"></option>
+        <option value="deepseek-ai/DeepSeek-R1"></option>
+        <option value="Qwen/Qwen2.5-72B-Instruct"></option>
+      </datalist>
+    </div>
+    <div class="cg">
+      <div class="clbl">Bridge Server 地址</div>
+      <input class="cinput" id="bridgeUrl" value="http://localhost:3000" placeholder="http://localhost:3000" />
+    </div>
+    <div class="crow">
+      <button class="cbtn pri" style="flex:1" onclick="connectBridge()">⚡ 连接 MCP</button>
+      <button class="cbtn sec" style="flex:1" onclick="disconnectBridge()">断开</button>
+    </div>
+    <div class="sline" id="cfgStatus">等待连接本地 Bridge Server…</div>
+
+    <div class="cg" id="toolListWrap" style="display:none">
+      <div class="clbl">可用 MCP 工具</div>
+      <div class="tool-list" id="toolList"></div>
+    </div>
+
+    <div class="cg">
+      <div class="clbl">额外系统提示词</div>
+      <textarea class="cinput" id="sysExtra" rows="3"
+        placeholder="例如：优先使用 SI 单位，仿真步长 0.001s…" style="resize:vertical"></textarea>
+    </div>
+    <button class="cbtn sec" onclick="saveCfg()">💾 保存配置</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+const S = {
+  apiBase: 'https://api.siliconflow.cn/v1',
+  apiKey: '', bridgeUrl: 'http://localhost:3000',
+  model: 'deepseek-ai/DeepSeek-V3',
+  mcpReady: false, mcpTools: [],
+  sessions: [], curSession: null, messages: [],
+  selectedFiles: [], workspace: [],
+  tools: { sim: true, ws: true },
+  busy: false
+};
+
+// ── Boot ──
+window.onload = () => {
+  loadCfg();
+  loadSessions();
+  document.getElementById('modelSel').onchange = e => {
+    S.model = e.target.value;
+    document.getElementById('modelInput').value = S.model;
+  };
+  document.getElementById('modelInput').oninput = e => {
+    S.model = e.target.value.trim();
+    syncModelSelect();
+  };
+  // auto-connect if we have saved URL
+  if (S.bridgeUrl) pollStatus();
+};
+
+function pollStatus() {
+  fetch(S.bridgeUrl + '/api/status')
+    .then(r => r.json())
+    .then(d => {
+      if (d.llm?.apiBase && !localStorage.getItem('sa_cfg')) {
+        S.apiBase = d.llm.apiBase;
+        S.model = d.llm.defaultModel || S.model;
+        document.getElementById('apiBase').value = S.apiBase;
+        document.getElementById('modelInput').value = S.model;
+        syncModelSelect();
+      }
+      setMcpStatus(d.mcpReady, d.tools);
+    })
+    .catch(() => setMcpStatus(false, []));
+}
+
+function syncModelSelect() {
+  const sel = document.getElementById('modelSel');
+  const matched = [...sel.options].some(o => o.value === S.model);
+  if (matched) sel.value = S.model;
+}
+
+// ── MCP connect / disconnect ──
+async function connectBridge() {
+  const url   = document.getElementById('bridgeUrl').value.trim();
+  const apiBase = document.getElementById('apiBase').value.trim();
+  const apiKey= document.getElementById('apiKey').value.trim();
+  const model = document.getElementById('modelInput').value.trim();
+  S.bridgeUrl = url; S.apiBase = apiBase; S.apiKey = apiKey; S.model = model || S.model;
+  syncModelSelect();
+  setCfgStatus('正在连接…', '');
+  try {
+    const r = await fetch(url + '/api/connect', { method:'POST', headers:{'Content-Type':'application/json'} });
+    const d = await r.json();
+    if (d.ok) {
+      setMcpStatus(true, d.tools.map(n => ({ name: n })));
+      setCfgStatus(`✓ MCP 已连接\n可用工具：${d.tools.join(', ')}`, 'ok');
+    } else {
+      throw new Error(d.error);
+    }
+  } catch(e) {
+    setMcpStatus(false, []);
+    setCfgStatus(`✗ 连接失败：${e.message}\n\n请确认：\n1. Bridge Server 已启动 (npm start)\n2. matlab-mcp-core-server.exe 路径正确\n3. MATLAB 已打开 (existing session mode)`, 'err');
+  }
+}
+
+async function disconnectBridge() {
+  await fetch(S.bridgeUrl + '/api/disconnect', { method:'POST' }).catch(() => {});
+  setMcpStatus(false, []);
+  setCfgStatus('已断开连接', '');
+}
+
+function setMcpStatus(ready, tools) {
+  S.mcpReady = ready; S.mcpTools = tools || [];
+  const dot = document.getElementById('mcpDot');
+  const txt = document.getElementById('mcpTxt');
+  dot.className = 'mcp-dot' + (ready ? ' on' : '');
+  txt.textContent = ready ? `MCP 已连接 (${S.mcpTools.length} 工具)` : 'MCP 未连接';
+  const wrap = document.getElementById('toolListWrap');
+  const list = document.getElementById('toolList');
+  if (ready && S.mcpTools.length) {
+    wrap.style.display = '';
+    list.innerHTML = S.mcpTools.map(t =>
+      `<div class="tool-row"><div class="tool-row-dot"></div>${t.name || t}</div>`
+    ).join('');
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function setCfgStatus(msg, cls) {
+  const el = document.getElementById('cfgStatus');
+  el.textContent = msg;
+  el.className = 'sline' + (cls ? ' ' + cls : '');
+}
+
+// ── Workspace ──
+async function scanWorkspace() {
+  const p = document.getElementById('wsPath').value.trim();
+  try {
+    const r = await fetch(`${S.bridgeUrl}/api/workspace?path=${encodeURIComponent(p)}`);
+    const d = await r.json();
+    if (d.ok && d.files.length) {
+      S.workspace = d.files;
+      toast(`扫描到 ${d.files.length} 个文件`);
+    } else {
+      // fallback demo files
+      S.workspace = [
+        { name:'pid_controller.slx' },{ name:'motor_model.slx' },
+        { name:'dc_bus_sim.slx' },{ name:'init_params.m' },
+        { name:'tune_pid.m' },{ name:'results.mat' }
+      ];
+      toast(d.error ? `无法访问路径，显示示例文件` : '使用示例文件');
+    }
+  } catch {
+    S.workspace = [
+      { name:'pid_controller.slx' },{ name:'motor_model.slx' },{ name:'init_params.m' }
+    ];
+    toast('Bridge 未连接，显示示例文件');
+  }
+  renderFtree();
+}
+
+function renderFtree() {
+  const el = document.getElementById('ftree');
+  el.innerHTML = '';
+  S.workspace.forEach(f => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const icons = { slx:'⬡', m:'⬟', mat:'⬢', mlx:'⬡', mdl:'⬡' };
+    const badges = { slx:'b-slx', m:'b-m', mat:'b-mat', mlx:'b-slx', mdl:'b-slx' };
+    const div = document.createElement('div');
+    div.className = 'fitem' + (S.selectedFiles.includes(f.name) ? ' sel' : '');
+    div.innerHTML = `<span class="ficon">${icons[ext]||'▪'}</span>
+      <span class="fname">${f.name}</span>
+      <span class="fbadge ${badges[ext]||'b-m'}">${ext}</span>`;
+    div.onclick = () => toggleFile(f.name, div);
+    el.appendChild(div);
+  });
+}
+
+function toggleFile(name, el) {
+  const i = S.selectedFiles.indexOf(name);
+  if (i === -1) S.selectedFiles.push(name);
+  else S.selectedFiles.splice(i, 1);
+  el.classList.toggle('sel', S.selectedFiles.includes(name));
+  renderAtt();
+}
+
+function renderAtt() {
+  const row = document.getElementById('attRow');
+  row.innerHTML = '';
+  S.selectedFiles.forEach(f => {
+    const chip = document.createElement('div');
+    chip.className = 'att-chip';
+    chip.innerHTML = `⬡ ${f} <button onclick="removeFile('${f}')">×</button>`;
+    row.appendChild(chip);
+  });
+}
+
+function removeFile(name) {
+  S.selectedFiles = S.selectedFiles.filter(x => x !== name);
+  renderFtree(); renderAtt();
+}
+
+// ── Sessions ──
+function loadSessions() {
+  S.sessions = JSON.parse(localStorage.getItem('sa_sessions') || '[]');
+  if (!S.sessions.length) {
+    S.sessions = [
+      { id:'s1', title:'PID 控制器调优', time:'今天 14:32', messages:[] },
+      { id:'s2', title:'电机模型仿真', time:'昨天 10:11', messages:[] }
+    ];
+  }
+  renderSessions();
+}
+
+function renderSessions() {
+  const el = document.getElementById('sessList');
+  el.innerHTML = '';
+  S.sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'sitem' + (S.curSession === s.id ? ' active' : '');
+    div.innerHTML = `<div class="stitle">${s.title}</div><div class="stime">${s.time}</div>`;
+    div.onclick = () => switchSession(s.id);
+    el.appendChild(div);
+  });
+}
+
+function newSession() {
+  const id = 's' + Date.now();
+  S.sessions.unshift({ id, title:'新对话', time:'刚刚', messages:[] });
+  switchSession(id);
+}
+
+function switchSession(id) {
+  S.curSession = id;
+  const s = S.sessions.find(x => x.id === id);
+  S.messages = s ? [...s.messages] : [];
+  renderMessages(); renderSessions();
+}
+
+// ── Messages ──
+function renderMessages() {
+  const container = document.getElementById('msgs');
+  const empty = document.getElementById('emptyState');
+  if (!S.messages.length) {
+    container.innerHTML = '';
+    container.appendChild(empty);
+    return;
+  }
+  if (container.contains(empty)) empty.remove();
+  container.innerHTML = '';
+  S.messages.forEach(m => container.appendChild(buildMsgEl(m)));
+  container.scrollTop = container.scrollHeight;
+}
+
+function buildMsgEl(m) {
+  const row = document.createElement('div');
+  row.className = 'mrow ' + m.role;
+  const av = m.role === 'ai' ? 'SA' : 'ME';
+
+  // tool events
+  const evHtml = (m.events || []).map(e => {
+    if (e.type === 'tool_call')
+      return `<div class="tool-event call"><span class="te-label">▶ ${e.name}</span><span class="te-body">${truncate(JSON.stringify(e.input||{}),80)}</span></div>`;
+    if (e.type === 'tool_result')
+      return `<div class="tool-event result"><span class="te-label">✓ ${e.name}</span><span class="te-body">${truncate(e.result,120)}</span></div>`;
+    if (e.type === 'tool_error')
+      return `<div class="tool-event err"><span class="te-label">✗ ${e.name}</span><span class="te-body">${e.error}</span></div>`;
+    if (e.type === 'status')
+      return `<div class="tool-event status"><span class="te-body">${e.text}</span></div>`;
+    return '';
+  }).join('');
+
+  const ctx = m.context ? `<div class="ctx-tag">📎 ${m.context}</div>` : '';
+  row.innerHTML = `
+    <div class="mavatar ${m.role}">${av}</div>
+    <div>
+      <div class="mbubble">${ctx}${evHtml}${fmt(m.content)}</div>
+      <div class="mtime">${m.time||''}</div>
+    </div>`;
+  return row;
+}
+
+function fmt(text) {
+  return text
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c)=>`<pre><code>${esc(c.trim())}</code></pre>`)
+    .replace(/`([^`]+)`/g, (_,c)=>`<code>${esc(c)}</code>`)
+    .replace(/\n/g,'<br>');
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function truncate(s,n){ return s.length>n ? s.slice(0,n)+'…' : s }
+function nowTime(){ return new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) }
+
+function appendMsg(m) {
+  S.messages.push(m);
+  const container = document.getElementById('msgs');
+  const empty = document.getElementById('emptyState');
+  if (container.contains(empty)) empty.remove();
+  container.appendChild(buildMsgEl(m));
+  container.scrollTop = container.scrollHeight;
+  saveSession();
+}
+
+function saveSession() {
+  if (!S.curSession) return;
+  const s = S.sessions.find(x => x.id === S.curSession);
+  if (!s) return;
+  s.messages = [...S.messages];
+  if (S.messages.length === 1) s.title = S.messages[0].content.slice(0,22)+'…';
+  localStorage.setItem('sa_sessions', JSON.stringify(S.sessions));
+  renderSessions();
+}
+
+// ── Send ──
+async function sendMsg() {
+  const ta = document.getElementById('msgInput');
+  const text = ta.value.trim();
+  if (!text || S.busy) return;
+  S.apiBase = document.getElementById('apiBase').value.trim();
+  S.apiKey = document.getElementById('apiKey').value.trim();
+  S.model = document.getElementById('modelInput').value.trim() || S.model;
+  syncModelSelect();
+  if (!S.apiBase) { toggleCfg(); toast('请先填写 LLM API Base'); return; }
+  if (!S.apiKey) { toggleCfg(); toast('请先填写 API Key'); return; }
+
+  if (!S.curSession) {
+    const id = 's' + Date.now();
+    S.sessions.unshift({ id, title: text.slice(0,20), time:'刚刚', messages:[] });
+    S.curSession = id;
+  }
+
+  const ctx = S.selectedFiles.length ? S.selectedFiles.join(', ') : null;
+  appendMsg({ role:'user', content:text, context:ctx, time:nowTime() });
+  ta.value = ''; ta.style.height = '';
+  document.getElementById('ccount').textContent = '0';
+
+  S.busy = true;
+  document.getElementById('sendBtn').disabled = true;
+  showThinking(true);
+
+  // Prepare AI message placeholder (we'll update it as SSE streams in)
+  const aiMsg = { role:'ai', content:'', events:[], time:nowTime() };
+
+  try {
+    const sysExtra = document.getElementById('sysExtra').value;
+    const history = S.messages.slice(-16,-1) // exclude the just-added user msg
+      .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+
+    const resp = await fetch(S.bridgeUrl + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: S.apiKey,
+        apiBase: S.apiBase,
+        model: S.model,
+        systemExtra: sysExtra,
+        contextFiles: S.selectedFiles,
+        messages: history,
+        userMessage: text
+      })
+    });
+
+    showThinking(false);
+
+    if (!resp.ok) throw new Error(`Bridge HTTP ${resp.status}`);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let streamDone = false;
+
+    // append AI msg placeholder
+    S.messages.push(aiMsg);
+    const container = document.getElementById('msgs');
+    const empty = document.getElementById('emptyState');
+    if (container.contains(empty)) empty.remove();
+    const msgEl = buildMsgEl(aiMsg);
+    msgEl.id = 'ai-streaming';
+    container.appendChild(msgEl);
+    container.scrollTop = container.scrollHeight;
+
+    while (!streamDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const ev = JSON.parse(line.slice(6));
+          handleSSE(ev, aiMsg);
+          if (ev.type === 'done') streamDone = true;
+          // re-render streaming message
+          const newEl = buildMsgEl(aiMsg);
+          newEl.id = 'ai-streaming';
+          const old = document.getElementById('ai-streaming');
+          if (old) old.replaceWith(newEl);
+          container.scrollTop = container.scrollHeight;
+        } catch {}
+      }
+    }
+
+    if (streamDone) await reader.cancel().catch(() => {});
+
+    saveSession();
+  } catch (err) {
+    showThinking(false);
+    if (!aiMsg.content) {
+      appendMsg({ role:'ai', content:`❌ 请求失败：${err.message}`, time:nowTime() });
+    }
+  } finally {
+    showThinking(false);
+    S.busy = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+function handleSSE(ev, aiMsg) {
+  if (ev.type === 'text') aiMsg.content += ev.text;
+  else if (ev.type === 'done') { /* finished */ }
+  else aiMsg.events.push(ev); // status, tool_call, tool_result, tool_error
+}
+
+function showThinking(on) {
+  const container = document.getElementById('msgs');
+  const ex = document.getElementById('thinking-row');
+  if (ex) ex.remove();
+  if (!on) return;
+  const div = document.createElement('div');
+  div.id = 'thinking-row';
+  div.className = 'thinking-row';
+  div.innerHTML = `<div class="mavatar ai">SA</div>
+    <div class="tdots"><span></span><span></span><span></span></div>
+    <span class="t-label">正在思考...</span>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── UI helpers ──
+function toggleCfg()     { document.getElementById('cfgPanel').classList.toggle('open') }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed') }
+
+function toggleTool(k) {
+  S.tools[k] = !S.tools[k];
+  document.getElementById('tgl-' + k).classList.toggle('on', S.tools[k]);
+}
+
+function clearChat() {
+  if (!confirm('清除当前对话？')) return;
+  S.messages = [];
+  const s = S.sessions.find(x => x.id === S.curSession);
+  if (s) s.messages = [];
+  renderMessages();
+}
+
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
+function onInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+  document.getElementById('ccount').textContent = el.value.length;
+}
+function useChip(el) { document.getElementById('msgInput').value = el.textContent; document.getElementById('msgInput').focus(); }
+
+// ── Config persistence ──
+function loadCfg() {
+  try {
+    const c = JSON.parse(localStorage.getItem('sa_cfg') || '{}');
+    if (c.apiBase)   { document.getElementById('apiBase').value = c.apiBase;   S.apiBase = c.apiBase; }
+    if (c.apiKey)    { document.getElementById('apiKey').value = c.apiKey;     S.apiKey = c.apiKey; }
+    if (c.bridgeUrl) { document.getElementById('bridgeUrl').value = c.bridgeUrl; S.bridgeUrl = c.bridgeUrl; }
+    if (c.model)     { document.getElementById('modelInput').value = c.model;  S.model = c.model; syncModelSelect(); }
+    if (c.sysExtra)  document.getElementById('sysExtra').value = c.sysExtra;
+  } catch {}
+}
+
+function saveCfg() {
+  S.apiBase = document.getElementById('apiBase').value.trim();
+  S.apiKey = document.getElementById('apiKey').value.trim();
+  S.bridgeUrl = document.getElementById('bridgeUrl').value.trim();
+  S.model = document.getElementById('modelInput').value.trim() || S.model;
+  syncModelSelect();
+  localStorage.setItem('sa_cfg', JSON.stringify({
+    apiBase: S.apiBase,
+    apiKey: S.apiKey,
+    bridgeUrl: S.bridgeUrl,
+    model: S.model,
+    sysExtra: document.getElementById('sysExtra').value
+  }));
+  toast('配置已保存');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
