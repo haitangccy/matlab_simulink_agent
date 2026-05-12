@@ -53,3 +53,15 @@ BuckBoost:  |Vo| ~= D / (1 - D) * Vin
 - 负载和输入扰动
 
 只要存在 Simulink 模型，就应尽快从公式计算切换到闭环仿真验证。
+
+## Simulink 物理电路建模要求
+
+对 Buck、Boost、Buck-Boost 等 DC/DC 电力电子电路，若用户要求“设计电路”“用电力电子器件”“Simulink 仿真模型”“物理模型”或要交付 `.slx`，功率级应优先搭建为物理电路，而不是只给平均模型：
+
+- 输入侧：DC Voltage Source 或等效电源，必要时加入源阻抗、输入电容或输入扰动源。
+- 开关器件：MOSFET/IGBT/Ideal Switch、二极管或同步整流 MOSFET，并设置导通电阻、压降、吸收网络等关键非理想参数。
+- 储能与负载：电感、电容、ESR、负载电阻/动态负载按设计值连接。
+- 测量与控制接口：输出电压、电感电流、开关电流、占空比/门极信号需要可记录到 `logsout`、`out` 或 `To Workspace`。
+- 求解器：Specialized Power Systems 模型应包含 `powergui`；Simscape 模型应包含 Solver Configuration 和 Electrical Reference。步长要能解析 PWM 开关波形。
+
+平均模型或传递函数模型可以用于公式校核和控制器初筛，但最终设计结论、PI 参数和报告数据应来自物理电路模型或明确的开关级器件模型。若只能使用平均模型，必须在报告中明确标注验证等级和限制。

@@ -1,6 +1,6 @@
 ---
 name: power-electronics-dcdc-simulink-expert
-description: 电力电子 DC/DC 仿真调参专家 Skill。用于 Buck、Boost、Buck-Boost、LLC 等 DC/DC 变换器参数设计、单环或双闭环 PI 控制器整定、MATLAB/Simulink 自动仿真、波形分析、故障排查和论文仿真结果表达。当用户提到 Buck/Boost/LLC、DC-DC、双闭环、PI 调参、Simulink 模型、logsout/out/To Workspace 波形、占空比或频率限幅、自动整定或“根据仿真继续调”时使用。若存在 Simulink 模型或工具接口，必须优先执行设置参数、运行仿真、读取波形、计算指标、修正参数的闭环流程，不能在没有仿真反馈时直接给最终 Kp/Ki。
+description: 电力电子 DC/DC 仿真调参专家 Skill。用于 Buck、Boost、Buck-Boost、LLC 等 DC/DC 变换器参数设计、单环或双闭环 PI 控制器整定、MATLAB/Simulink 自动仿真、物理电路模型搭建、波形分析、故障排查和论文仿真结果表达。当用户提到 Buck/Boost/LLC、DC-DC、双闭环、PI 调参、Simulink 模型、物理电路、logsout/out/To Workspace 波形、占空比或频率限幅、自动整定或“根据仿真继续调”时使用。若存在 Simulink 模型或工具接口，必须优先执行设置参数、运行仿真、读取波形、计算指标、修正参数的闭环流程；对电力电子器件级验证，应优先使用由电源、开关管、二极管/同步管、L/C/R、测量和 powergui/Solver 等组成的物理电路模型，不能在没有仿真反馈时直接给最终 Kp/Ki。
 ---
 
 # 电力电子 DC/DC Simulink 仿真调参专家
@@ -8,6 +8,8 @@ description: 电力电子 DC/DC 仿真调参专家 Skill。用于 Buck、Boost�
 ## 核心原则
 
 把控制器参数看成“从仿真和波形里长出来的结果”，不要把它当成经验猜数。
+
+对 Buck、Boost、Buck-Boost 等电力电子变换器，Simulink 验证默认应使用物理电路模型：电源、MOSFET/IGBT/理想开关、二极管或同步整流器、电感、电容、负载、测量模块、PWM/门极驱动、`powergui` 或 Simscape Solver 等必须在模型中真实连接。平均模型、传递函数模型或 MATLAB Function 形式的功率级只可作为控制器初筛或加速探索；最终候选 PI 参数必须回到物理电路模型或明确的开关级器件模型中验证。
 
 只要用户提供了 Simulink 模型、模型名、可调用的 MATLAB 环境、信号名、`logsout`、`out`、`To Workspace` 数据，或者要求“根据仿真结果调 PI”，就进入仿真闭环模式：
 
@@ -28,6 +30,7 @@ description: 电力电子 DC/DC 仿真调参专家 Skill。用于 Buck、Boost�
 | Buck 双闭环 PI 调参 | 先调电流内环，再调电压外环；有模型就先仿真 | `references/buck-dual-loop-pi.md` |
 | LLC 参数设计或控制问题 | 检查谐振腔、增益范围、ZVS/ZCS 风险和调频方向 | `references/llc-design-control.md` |
 | Simulink 模型、工具接口或波形数据 | 执行或模拟闭环仿真流程；先算指标再改参数 | `references/simulink-tuning-loop.md` |
+| 要求新建 DC/DC Simulink 仿真模型 | 优先搭建物理电路功率级，再接控制器和测量；不要只交付平均模型或函数功率级 | `references/dcdc-design-rules.md` + `references/simulink-tuning-loop.md` |
 | Simulink 自动建模或批处理仿真报错 | 按错误类型定位启动、代码生成、函数块、代数环和编码问题 | `references/simulink-build-troubleshooting.md` |
 | 论文或报告表达 | 用工程化语言解释参数设计、控制策略、波形和调参依据 | 对应拓扑 reference 加 `references/simulink-tuning-loop.md` |
 
@@ -81,6 +84,8 @@ LLC 控制必须特别检查：
 
 有模型时，优先实际运行，不要停留在理论判断。本仓库内的 MATLAB/Simulink 任务可能需要运行 `matlab -batch` 脚本、检查 `.m` 文件、读取 `.mat` 结果。优先沿用现有项目脚本、变量名和模型结构，不要凭空重建一套自动化框架。
 
+如果用户要求“电路”“物理模型”“电力电子器件”“Simulink 仿真模型”或类似表达，交付物必须包含可打开的 `.slx` 物理电路模型，而不只是脚本、报告、平均模型或 MATLAB Function 近似功率级。控制器可以用 Simulink 控制块或 MATLAB Function 实现，但功率级应由电力电子/电气物理器件块连接而成，并且要保存模型文件、运行至少一次编译/仿真验证。
+
 每轮仿真都要记录并汇报：
 
 - 参数组
@@ -99,6 +104,7 @@ LLC 控制必须特别检查：
 - 先确认拓扑再套公式，不要把 LLC 当成普通占空比控制 Buck。
 - 必要时考虑 ESR、开关/二极管压降、死区、采样延迟、PWM 延迟、电流滤波和数字离散化。
 - 必须看电流应力。电压误差很小但电感电流或谐振电流过大，不算好结果。
+- 物理电路模型优先。除非用户明确只要平均模型，否则不要用纯传递函数、状态方程或 MATLAB Function 功率级替代电力电子器件电路作为最终仿真依据。
 - 增大积分增益前，先检查限幅和抗积分饱和。
 - LLC 的 ZVS/ZCS 和高频器件应力必须用开关模型验证，平均模型不能证明这些开关条件。
 - 开关级模型步长要足够小，优先从开关周期的 1/100 到 1/200 附近开始；模型太慢时可以放宽，但要检查电流波形是否失真。

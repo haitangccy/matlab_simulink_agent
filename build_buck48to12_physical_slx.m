@@ -1,0 +1,216 @@
+function build_buck48to12_physical_slx()
+%BUILD_BUCK48TO12_PHYSICAL_SLX Build a real SPS physical buck circuit model.
+% Power stage is made from physical Specialized Power Systems blocks:
+% DC source, MOSFET, diode, current sensor, inductor, capacitor, resistor load,
+% voltage sensor, ground, and powergui. The controller only generates PWM.
+
+rootDir = fileparts(mfilename("fullpath"));
+outDir = fullfile(rootDir, "buck48to12_outputs");
+if ~exist(outDir, "dir"), mkdir(outDir); end
+
+mdl = "buck48to12_physical_power_circuit";
+slxFile = fullfile(rootDir, mdl + ".slx");
+if bdIsLoaded(mdl), close_system(mdl, 0); end
+if exist(slxFile, "file"), delete(slxFile); end
+
+new_system(mdl);
+open_system(mdl);
+
+% Workspace parameters visible in the model.
+assignin("base", "Vin", 48);
+assignin("base", "Vref", 12);
+assignin("base", "fs", 100e3);
+assignin("base", "Ts_ctrl", 10e-6);
+assignin("base", "L_buck", 30e-6);
+assignin("base", "C_buck", 100e-6);
+assignin("base", "R_load", 1.2);
+assignin("base", "Ron_mos", 8e-3);
+assignin("base", "Vf_diode", 0.55);
+assignin("base", "Ron_diode", 10e-3);
+assignin("base", "Kp_v_single", 0.029222);
+assignin("base", "Ki_v_single", 30.071);
+assignin("base", "Kp_v_dual", 3.5166);
+assignin("base", "Ki_v_dual", 15849);
+assignin("base", "Kp_i_dual", 0.038522);
+assignin("base", "Ki_i_dual", 360.7);
+assignin("base", "Kp_v", 16);
+assignin("base", "Ki_v", 6500);
+assignin("base", "Kp_i", 0.06);
+assignin("base", "Ki_i", 140);
+assignin("base", "ctrl_mode", 2); % 1 = voltage loop, 2 = voltage-current loop
+
+set_param(mdl, ...
+    "StopTime", "8e-3", ...
+    "SolverType", "Fixed-step", ...
+    "Solver", "ode3", ...
+    "FixedStep", "5e-7", ...
+    "ReturnWorkspaceOutputs", "on");
+
+% Physical power circuit blocks.
+add_block("sps_lib/Sources/DC Voltage Source", mdl + "/Vin_48V", ...
+    "Amplitude", "Vin", "Position", [80 190 135 255]);
+add_block("sps_lib/Power Electronics/Mosfet", mdl + "/High_Side_MOSFET", ...
+    "Ron", "Ron_mos", "Vfd", "0", "Rs", "1e6", "Cs", "inf", ...
+    "Measurements", "on", "Position", [215 165 285 230]);
+add_block("sps_lib/Power Electronics/Diode", mdl + "/Freewheel_Diode", ...
+    "Ron", "Ron_diode", "Vf", "Vf_diode", "UseSnubber", "on", ...
+    "Rs", "1e6", "Cs", "inf", "Measurements", "on", ...
+    "Position", [215 270 285 335]);
+add_block("sps_lib/Sensors and Measurements/Current Measurement", mdl + "/Inductor_Current_Meas", ...
+    "Position", [330 175 380 225]);
+add_block("sps_lib/Passives/Series RLC Branch", mdl + "/L_30uH", ...
+    "BranchType", "L", "Resistance", "0.015", "Inductance", "L_buck", ...
+    "Measurements", "Branch current", "Position", [430 178 515 222]);
+add_block("sps_lib/Passives/Series RLC Branch", mdl + "/C_100uF_ESR", ...
+    "BranchType", "RC", "Resistance", "0.02", "Capacitance", "C_buck", ...
+    "Measurements", "Branch voltage", "Position", [575 255 660 305]);
+add_block("sps_lib/Passives/Series RLC Branch", mdl + "/R_Load_1p2ohm", ...
+    "BranchType", "R", "Resistance", "R_load", "Position", [715 255 800 305]);
+add_block("sps_lib/Sensors and Measurements/Voltage Measurement", mdl + "/Output_Voltage_Meas", ...
+    "Position", [575 145 650 190]);
+add_block("sps_lib/Utilities/Ground", mdl + "/Electrical_Ground", "Position", [425 370 465 410]);
+add_block("sps_lib/powergui", mdl + "/powergui", ...
+    "SimulationMode", "Discrete", "SampleTime", "5e-7", "Position", [50 40 145 90]);
+
+% Control and logging blocks.
+add_block("simulink/Sources/Clock", mdl + "/Clock", "Position", [60 500 90 530]);
+add_block("simulink/Sources/Constant", mdl + "/ctrl_mode_1_single_2_dual", ...
+    "Value", "ctrl_mode", "Position", [60 550 130 580]);
+add_block("simulink/Sources/Constant", mdl + "/Kp_v_const", ...
+    "Value", "Kp_v", "Position", [60 600 130 625]);
+add_block("simulink/Sources/Constant", mdl + "/Ki_v_const", ...
+    "Value", "Ki_v", "Position", [60 635 130 660]);
+add_block("simulink/Sources/Constant", mdl + "/Kp_i_const", ...
+    "Value", "Kp_i", "Position", [60 670 130 695]);
+add_block("simulink/Sources/Constant", mdl + "/Ki_i_const", ...
+    "Value", "Ki_i", "Position", [60 705 130 730]);
+add_block("simulink/Sources/Repeating Sequence", mdl + "/PWM_Carrier_100kHz", ...
+    "rep_seq_t", "[0 1/fs]", "rep_seq_y", "[0 1]", "Position", [360 500 455 540]);
+add_block("simulink/Logic and Bit Operations/Relational Operator", mdl + "/Duty_GT_Carrier", ...
+    "Operator", ">", "InputSameDT", "off", "OutDataTypeStr", "boolean", ...
+    "Position", [500 500 550 540]);
+add_block("simulink/Signal Attributes/Data Type Conversion", mdl + "/Gate_To_Double", ...
+    "OutDataTypeStr", "double", "Position", [615 530 675 560]);
+add_block("simulink/User-Defined Functions/MATLAB Function", mdl + "/Single_or_Dual_PI_Controller", ...
+    "Position", [185 455 315 590]);
+add_block("simulink/Signal Routing/Mux", mdl + "/Waveform_Mux", "Inputs", "4", ...
+    "Position", [900 165 925 270]);
+add_block("simulink/Sinks/Scope", mdl + "/Scope_Vo_iL_Duty_Gate", "Position", [970 180 1015 240]);
+add_block("simulink/Sinks/To Workspace", mdl + "/Vo_To_Workspace", ...
+    "VariableName", "Vo_phys", "SaveFormat", "StructureWithTime", "Position", [900 315 1005 345]);
+add_block("simulink/Sinks/To Workspace", mdl + "/iL_To_Workspace", ...
+    "VariableName", "iL_phys", "SaveFormat", "StructureWithTime", "Position", [900 360 1005 390]);
+add_block("simulink/Sinks/To Workspace", mdl + "/Duty_To_Workspace", ...
+    "VariableName", "duty_phys", "SaveFormat", "StructureWithTime", "Position", [900 405 1005 435]);
+
+controllerCode = [
+    "function [duty,iRef] = Single_or_Dual_PI_Controller(t,Vo,iL,ctrl_mode,Kp_v,Ki_v,Kp_i,Ki_i)" newline ...
+    "duty = 0; iRef = 0;" newline ...
+    "persistent ev ei duty_z iref_z next_t" newline ...
+    "if isempty(ev)" newline ...
+    "    ev=0; ei=0; duty_z=0.25; iref_z=10; next_t=0;" newline ...
+    "end" newline ...
+    "Vin_c=48; Vref_c=12; Pout_c=120; Ts=1e-5;" newline ...
+    "dmin=0.02; dmax=0.92; imin=0; imax=22;" newline ...
+    "if t >= next_t" newline ...
+    "    vref_now = Vref_c * min(1,t/1e-3);" newline ...
+    "    ev_now = vref_now - Vo;" newline ...
+    "    if ctrl_mode == 1" newline ...
+    "        [duty_z, ev] = pi_lim(ev_now, ev, Kp_v, Ki_v, Ts, dmin, dmax);" newline ...
+    "        iref_z = Pout_c/Vref_c;" newline ...
+    "    else" newline ...
+    "        [iref_z, ev] = pi_lim(ev_now, ev, Kp_v, Ki_v, Ts, imin, imax);" newline ...
+    "        ei_now = iref_z - iL;" newline ...
+    "        [duty_z, ei] = pi_lim(ei_now, ei, Kp_i, Ki_i, Ts, dmin, dmax);" newline ...
+    "    end" newline ...
+    "    next_t = next_t + Ts;" newline ...
+    "end" newline ...
+    "duty = duty_z; iRef = iref_z;" newline ...
+    "end" newline ...
+    "function [u,integ] = pi_lim(e,integ,kp,ki,Ts,umin,umax)" newline ...
+    "u0 = kp*e + integ;" newline ...
+    "u = min(max(u0,umin),umax);" newline ...
+    "if (u==u0) || (u==umax && e<0) || (u==umin && e>0)" newline ...
+    "    integ = integ + ki*e*Ts;" newline ...
+    "end" newline ...
+    "end"];
+setFunctionCode(mdl + "/Single_or_Dual_PI_Controller", controllerCode, "1e-5");
+
+% Physical electrical wiring.
+connectPhys(mdl, "Vin_48V", "RConn", 1, "High_Side_MOSFET", "LConn", 1);      % Vin+ to MOSFET drain
+connectPhys(mdl, "High_Side_MOSFET", "RConn", 1, "Inductor_Current_Meas", "LConn", 1); % switch node to current sensor
+connectPhys(mdl, "Inductor_Current_Meas", "RConn", 1, "L_30uH", "LConn", 1);  % sensor to inductor
+connectPhys(mdl, "L_30uH", "RConn", 1, "C_100uF_ESR", "LConn", 1);            % output node
+connectPhys(mdl, "L_30uH", "RConn", 1, "R_Load_1p2ohm", "LConn", 1);
+connectPhys(mdl, "L_30uH", "RConn", 1, "Output_Voltage_Meas", "LConn", 1);
+connectPhys(mdl, "C_100uF_ESR", "RConn", 1, "Electrical_Ground", "LConn", 1);
+connectPhys(mdl, "R_Load_1p2ohm", "RConn", 1, "Electrical_Ground", "LConn", 1);
+connectPhys(mdl, "Output_Voltage_Meas", "LConn", 2, "Electrical_Ground", "LConn", 1);
+connectPhys(mdl, "Vin_48V", "LConn", 1, "Electrical_Ground", "LConn", 1);    % Vin-
+connectPhys(mdl, "Freewheel_Diode", "LConn", 1, "Electrical_Ground", "LConn", 1); % diode anode
+connectPhys(mdl, "Freewheel_Diode", "RConn", 1, "High_Side_MOSFET", "RConn", 1);  % diode cathode to switch node
+
+% Simulink signal wiring.
+add_line(mdl, "Clock/1", "Single_or_Dual_PI_Controller/1", "autorouting", "on");
+add_line(mdl, "Output_Voltage_Meas/1", "Single_or_Dual_PI_Controller/2", "autorouting", "on");
+add_line(mdl, "Inductor_Current_Meas/1", "Single_or_Dual_PI_Controller/3", "autorouting", "on");
+add_line(mdl, "ctrl_mode_1_single_2_dual/1", "Single_or_Dual_PI_Controller/4", "autorouting", "on");
+add_line(mdl, "Kp_v_const/1", "Single_or_Dual_PI_Controller/5", "autorouting", "on");
+add_line(mdl, "Ki_v_const/1", "Single_or_Dual_PI_Controller/6", "autorouting", "on");
+add_line(mdl, "Kp_i_const/1", "Single_or_Dual_PI_Controller/7", "autorouting", "on");
+add_line(mdl, "Ki_i_const/1", "Single_or_Dual_PI_Controller/8", "autorouting", "on");
+add_line(mdl, "Single_or_Dual_PI_Controller/1", "Duty_GT_Carrier/1", "autorouting", "on");
+add_line(mdl, "PWM_Carrier_100kHz/1", "Duty_GT_Carrier/2", "autorouting", "on");
+add_line(mdl, "Duty_GT_Carrier/1", "High_Side_MOSFET/1", "autorouting", "on");
+add_line(mdl, "Duty_GT_Carrier/1", "Gate_To_Double/1", "autorouting", "on");
+
+add_line(mdl, "Output_Voltage_Meas/1", "Waveform_Mux/1", "autorouting", "on");
+add_line(mdl, "Inductor_Current_Meas/1", "Waveform_Mux/2", "autorouting", "on");
+add_line(mdl, "Single_or_Dual_PI_Controller/1", "Waveform_Mux/3", "autorouting", "on");
+add_line(mdl, "Gate_To_Double/1", "Waveform_Mux/4", "autorouting", "on");
+add_line(mdl, "Waveform_Mux/1", "Scope_Vo_iL_Duty_Gate/1", "autorouting", "on");
+add_line(mdl, "Output_Voltage_Meas/1", "Vo_To_Workspace/1", "autorouting", "on");
+add_line(mdl, "Inductor_Current_Meas/1", "iL_To_Workspace/1", "autorouting", "on");
+add_line(mdl, "Single_or_Dual_PI_Controller/1", "Duty_To_Workspace/1", "autorouting", "on");
+
+ann = Simulink.Annotation(mdl, sprintf([ ...
+    'Physical 48V to 12V Buck converter circuit\\n' ...
+    'Power stage is built from SPS electrical blocks: DC source, MOSFET, diode, L, C, R, sensors, ground, powergui.\\n' ...
+    'ctrl_mode=1 single voltage PI; ctrl_mode=2 dual voltage-current PI. Default is dual loop.']));
+ann.Position = [40 620 900 700];
+
+save_system(mdl, slxFile);
+
+% Verify the physical circuit compiles and simulates.
+in = Simulink.SimulationInput(mdl);
+in = in.setModelParameter("StopTime", "2e-3");
+out = sim(in);
+save(fullfile(outDir, "buck48to12_physical_slx_verification.mat"), "out");
+
+fprintf("Created physical Simulink circuit: %s\n", slxFile);
+fprintf("Verification simulation completed for 2 ms.\n");
+end
+
+function connectPhys(mdl, srcBlk, srcKind, srcIdx, dstBlk, dstKind, dstIdx)
+src = get_param(mdl + "/" + srcBlk, "PortHandles");
+dst = get_param(mdl + "/" + dstBlk, "PortHandles");
+srcPorts = src.(srcKind);
+dstPorts = dst.(dstKind);
+add_line(mdl, srcPorts(srcIdx), dstPorts(dstIdx), "autorouting", "on");
+end
+
+function setFunctionCode(blockPath, codeText, sampleTime)
+rt = sfroot;
+chart = rt.find("-isa", "Stateflow.EMChart", "Path", blockPath);
+chart.Script = char(codeText);
+chart.ChartUpdate = "DISCRETE";
+chart.SampleTime = sampleTime;
+data = chart.find("-isa", "Stateflow.Data");
+for k = 1:numel(data)
+    if data(k).Scope == "Input" || data(k).Scope == "Output"
+        data(k).Props.Array.Size = "1";
+        data(k).Props.Type.Method = "Built-in";
+        data(k).Props.Type.Primitive = "double";
+    end
+end
+end
