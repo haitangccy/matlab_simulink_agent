@@ -255,6 +255,51 @@
   .send-btn:hover{background:#333;transform:scale(1.04)}
   .send-btn:active{transform:scale(.96)}
   .send-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;transform:none}
+  .stop-btn{
+    width:30px;height:30px;background:#fff;border:1.5px solid var(--border2);border-radius:7px;
+    cursor:pointer;display:grid;place-items:center;font-size:13px;color:var(--text2);
+    transition:all .14s;flex-shrink:0;
+  }
+  .stop-btn:hover{border-color:#b83232;color:#b83232;background:#fff0f0}
+  /* streaming indicator in input bar */
+  .streaming-hint{
+    display:none;align-items:center;gap:5px;
+    font-size:11px;color:var(--text3);font-family:var(--mono);padding:0 9px 7px;
+  }
+  .streaming-hint.on{display:flex}
+  .sh-dot{width:5px;height:5px;border-radius:50%;background:var(--acc3);animation:pulse 1.2s infinite}
+  /* onboarding guide banner */
+  .guide-banner{
+    background:#fffbf5;border:1px solid rgba(154,77,33,.18);
+    border-radius:9px;padding:10px 13px;margin:0 22px;
+    font-size:12px;color:var(--text2);line-height:1.7;
+    display:flex;gap:10px;align-items:flex-start;max-width:860px;width:calc(100% - 44px);margin:8px auto 0;
+  }
+  .guide-banner.hidden{display:none}
+  .guide-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+  .guide-body{flex:1}
+  .guide-body b{color:var(--text);font-weight:600}
+  .guide-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0;margin-left:4px;flex-shrink:0}
+  .guide-close:hover{color:var(--text)}
+  .guide-steps{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+  .guide-step{display:flex;align-items:baseline;gap:6px}
+  .gs-num{
+    width:16px;height:16px;border-radius:50%;background:var(--acc3);
+    color:#fff;font-size:9px;font-weight:700;display:inline-grid;
+    place-items:center;flex-shrink:0;
+  }
+  /* error bubble variant */
+  .mbubble.err-bubble{
+    background:#fff5f5;border-color:rgba(184,50,50,.22);color:#9f2929
+  }
+  .err-retry{
+    display:inline-flex;align-items:center;gap:3px;
+    margin-top:6px;padding:3px 9px;border-radius:4px;
+    background:#fff0f0;border:1px solid rgba(184,50,50,.28);
+    color:#9f2929;font-size:11px;cursor:pointer;font-family:var(--mono);
+    transition:all .15s
+  }
+  .err-retry:hover{background:#b83232;color:#fff;border-color:#b83232}
   .itoolbar{display:flex;align-items:center;gap:5px;padding:0 9px 7px;flex-wrap:wrap}
   .ttoggle{
     display:flex;align-items:center;gap:4px;padding:2px 7px;
@@ -374,6 +419,20 @@
 
   <!-- Chat -->
   <div class="chat">
+    <!-- Onboarding guide (dismissable) -->
+    <div class="guide-banner" id="guideBanner">
+      <div class="guide-icon">⚙️</div>
+      <div class="guide-body">
+        <b>首次使用？三步快速开始：</b>
+        <div class="guide-steps">
+          <div class="guide-step"><span class="gs-num">1</span>启动本地 Bridge：<code style="font-size:11px;background:#ededeb;padding:1px 5px;border-radius:3px">npm start</code></div>
+          <div class="guide-step"><span class="gs-num">2</span>点击顶栏 <b>MCP 未连接</b> 按钮，填写 API Key 后点击「连接 MCP」</div>
+          <div class="guide-step"><span class="gs-num">3</span>在输入框输入指令，例如：<em>打开 model.slx 并运行仿真</em></div>
+        </div>
+      </div>
+      <button class="guide-close" onclick="dismissGuide()" title="关闭引导">✕</button>
+    </div>
+
     <div class="msgs" id="msgs">
       <div class="empty" id="emptyState">
         <div class="empty-icon">⎔</div>
@@ -397,6 +456,11 @@
           <textarea id="msgInput" rows="1" placeholder="向 Simulink 智能体发送指令..."
             onkeydown="handleKey(event)" oninput="onInput(this)"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMsg()">↑</button>
+          <button class="stop-btn" id="stopBtn" onclick="stopStream()" style="display:none" title="停止生成">■</button>
+        </div>
+        <div class="streaming-hint" id="streamingHint">
+          <div class="sh-dot"></div>
+          <span id="streamingLabel">AI 正在回复中…</span>
         </div>
         <div class="itoolbar">
           <div class="ttoggle on" id="tgl-sim" onclick="toggleTool('sim')">
@@ -472,6 +536,7 @@ const S = {
   mcpReady: false, mcpTools: [],
   sessions: [], curSession: null, messages: [],
   selectedFiles: [], workspace: [],
+  fileContentsCache: {},   // name -> { content, path, name, truncated, totalLines, note }
   tools: { sim: true, ws: true },
   busy: false
 };
@@ -480,6 +545,10 @@ const S = {
 window.onload = () => {
   loadCfg();
   loadSessions();
+  // hide guide if dismissed before
+  if (localStorage.getItem('sa_guide_dismissed')) {
+    document.getElementById('guideBanner').classList.add('hidden');
+  }
   document.getElementById('modelSel').onchange = e => {
     S.model = e.target.value;
     document.getElementById('modelInput').value = S.model;
@@ -575,20 +644,20 @@ async function scanWorkspace() {
     const r = await fetch(`${S.bridgeUrl}/api/workspace?path=${encodeURIComponent(p)}`);
     const d = await r.json();
     if (d.ok && d.files.length) {
-      S.workspace = d.files;
+      S.workspace = d.files; // each: { name, path }
       toast(`扫描到 ${d.files.length} 个文件`);
     } else {
-      // fallback demo files
+      // fallback demo files (no real path, so readfile won't work — that's fine)
       S.workspace = [
-        { name:'pid_controller.slx' },{ name:'motor_model.slx' },
-        { name:'dc_bus_sim.slx' },{ name:'init_params.m' },
-        { name:'tune_pid.m' },{ name:'results.mat' }
+        { name:'pid_controller.slx', path:null },{ name:'motor_model.slx', path:null },
+        { name:'dc_bus_sim.slx', path:null },{ name:'init_params.m', path:null },
+        { name:'tune_pid.m', path:null },{ name:'results.mat', path:null }
       ];
-      toast(d.error ? `无法访问路径，显示示例文件` : '使用示例文件');
+      toast(d.error ? '无法访问路径，显示示例文件' : '使用示例文件');
     }
   } catch {
     S.workspace = [
-      { name:'pid_controller.slx' },{ name:'motor_model.slx' },{ name:'init_params.m' }
+      { name:'pid_controller.slx', path:null },{ name:'motor_model.slx', path:null },{ name:'init_params.m', path:null }
     ];
     toast('Bridge 未连接，显示示例文件');
   }
@@ -602,21 +671,61 @@ function renderFtree() {
     const ext = f.name.split('.').pop().toLowerCase();
     const icons = { slx:'⬡', m:'⬟', mat:'⬢', mlx:'⬡', mdl:'⬡' };
     const badges = { slx:'b-slx', m:'b-m', mat:'b-mat', mlx:'b-slx', mdl:'b-slx' };
+    const isSelected = S.selectedFiles.includes(f.name);
+    const cached = S.fileContentsCache[f.name];
     const div = document.createElement('div');
-    div.className = 'fitem' + (S.selectedFiles.includes(f.name) ? ' sel' : '');
+    div.className = 'fitem' + (isSelected ? ' sel' : '');
+    // Show read indicator if content is cached
+    const readIcon = cached
+      ? (cached.content ? ' <span style="color:var(--acc2);font-size:9px" title="内容已加载">●</span>'
+                        : ' <span style="color:var(--acc3);font-size:9px" title="二进制文件">○</span>')
+      : '';
     div.innerHTML = `<span class="ficon">${icons[ext]||'▪'}</span>
-      <span class="fname">${f.name}</span>
+      <span class="fname">${f.name}${readIcon}</span>
       <span class="fbadge ${badges[ext]||'b-m'}">${ext}</span>`;
-    div.onclick = () => toggleFile(f.name, div);
+    div.onclick = () => toggleFile(f, div);
     el.appendChild(div);
   });
 }
 
-function toggleFile(name, el) {
+async function toggleFile(f, el) {
+  // f can be a file object {name, path} or just a name string (legacy)
+  const name = typeof f === 'string' ? f : f.name;
+  const filePath = typeof f === 'string' ? null : f.path;
+
   const i = S.selectedFiles.indexOf(name);
-  if (i === -1) S.selectedFiles.push(name);
-  else S.selectedFiles.splice(i, 1);
+  if (i === -1) {
+    S.selectedFiles.push(name);
+    // Auto-read file content from Bridge if not already cached
+    if (filePath && !S.fileContentsCache[name]) {
+      el.style.opacity = '0.6';
+      try {
+        const r = await fetch(`${S.bridgeUrl}/api/readfile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          S.fileContentsCache[name] = d;
+          if (d.content) {
+            toast(`✓ 已读取 ${name}${d.truncated ? '（前200行）' : ''}`);
+          } else {
+            toast(`${name} 是二进制文件，将通过 MCP 操作`);
+          }
+        } else {
+          toast(`读取失败：${d.error}`);
+        }
+      } catch (e) {
+        toast(`读取文件失败：${e.message}`);
+      }
+      el.style.opacity = '';
+    }
+  } else {
+    S.selectedFiles.splice(i, 1);
+  }
   el.classList.toggle('sel', S.selectedFiles.includes(name));
+  renderFtree();
   renderAtt();
 }
 
@@ -624,15 +733,26 @@ function renderAtt() {
   const row = document.getElementById('attRow');
   row.innerHTML = '';
   S.selectedFiles.forEach(f => {
+    const cached = S.fileContentsCache[f];
+    const icon = cached
+      ? (cached.content ? '📄' : '⬡')
+      : '⏳';
+    const title = cached
+      ? (cached.content
+          ? `已读取内容${cached.truncated ? `（前${cached.totalLines}行中的前200行）` : ''}，路径：${cached.path}`
+          : cached.note || '二进制文件')
+      : '等待读取…';
     const chip = document.createElement('div');
     chip.className = 'att-chip';
-    chip.innerHTML = `⬡ ${f} <button onclick="removeFile('${f}')">×</button>`;
+    chip.title = title;
+    chip.innerHTML = `${icon} ${f} <button onclick="removeFile('${f}')">×</button>`;
     row.appendChild(chip);
   });
 }
 
 function removeFile(name) {
   S.selectedFiles = S.selectedFiles.filter(x => x !== name);
+  delete S.fileContentsCache[name];
   renderFtree(); renderAtt();
 }
 
@@ -707,10 +827,11 @@ function buildMsgEl(m) {
   }).join('');
 
   const ctx = m.context ? `<div class="ctx-tag">📎 ${m.context}</div>` : '';
+  const errClass = m.isErr ? ' err-bubble' : '';
   row.innerHTML = `
     <div class="mavatar ${m.role}">${av}</div>
     <div>
-      <div class="mbubble">${ctx}${evHtml}${fmt(m.content)}</div>
+      <div class="mbubble${errClass}">${ctx}${evHtml}${fmt(m.content)}</div>
       <div class="mtime">${m.time||''}</div>
     </div>`;
   return row;
@@ -746,6 +867,27 @@ function saveSession() {
   renderSessions();
 }
 
+// ── Abort controller for stopping stream ──
+let currentAbort = null;
+
+function stopStream() {
+  if (currentAbort) {
+    currentAbort.abort();
+    currentAbort = null;
+  }
+}
+
+function setStreamingUI(on, label) {
+  const sendBtn = document.getElementById('sendBtn');
+  const stopBtn  = document.getElementById('stopBtn');
+  const hint     = document.getElementById('streamingHint');
+  const lbl      = document.getElementById('streamingLabel');
+  sendBtn.style.display = on ? 'none' : '';
+  stopBtn.style.display  = on ? '' : 'none';
+  hint.classList.toggle('on', on);
+  if (label) lbl.textContent = label;
+}
+
 // ── Send ──
 async function sendMsg() {
   const ta = document.getElementById('msgInput');
@@ -770,32 +912,41 @@ async function sendMsg() {
   document.getElementById('ccount').textContent = '0';
 
   S.busy = true;
-  document.getElementById('sendBtn').disabled = true;
+  setStreamingUI(true, 'AI 正在思考中…');
   showThinking(true);
 
   // Prepare AI message placeholder (we'll update it as SSE streams in)
   const aiMsg = { role:'ai', content:'', events:[], time:nowTime() };
+  let aiMsgAppended = false;
+
+  currentAbort = new AbortController();
+  const signal = currentAbort.signal;
 
   try {
     const sysExtra = document.getElementById('sysExtra').value;
-    const history = S.messages.slice(-16,-1) // exclude the just-added user msg
+    const history = S.messages.slice(-16,-1)
       .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
 
     const resp = await fetch(S.bridgeUrl + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal,
       body: JSON.stringify({
         apiKey: S.apiKey,
         apiBase: S.apiBase,
         model: S.model,
         systemExtra: sysExtra,
         contextFiles: S.selectedFiles,
+        fileContents: S.selectedFiles
+          .map(name => S.fileContentsCache[name])
+          .filter(Boolean),
         messages: history,
         userMessage: text
       })
     });
 
     showThinking(false);
+    setStreamingUI(true, 'AI 正在回复中，按 ■ 可停止…');
 
     if (!resp.ok) throw new Error(`Bridge HTTP ${resp.status}`);
 
@@ -806,16 +957,49 @@ async function sendMsg() {
 
     // append AI msg placeholder
     S.messages.push(aiMsg);
+    aiMsgAppended = true;
     const container = document.getElementById('msgs');
     const empty = document.getElementById('emptyState');
     if (container.contains(empty)) empty.remove();
     const msgEl = buildMsgEl(aiMsg);
     msgEl.id = 'ai-streaming';
     container.appendChild(msgEl);
+    // grab the inner bubble element for in-place updates
+    const bubbleEl = msgEl.querySelector('.mbubble');
     container.scrollTop = container.scrollHeight;
 
+    // In-place bubble updater — no replaceWith, no DOM thrash
+    function refreshBubble() {
+      if (!bubbleEl) return;
+      const evHtml = (aiMsg.events || []).map(e => {
+        if (e.type === 'tool_call')
+          return `<div class="tool-event call"><span class="te-label">▶ ${e.name}</span><span class="te-body">${truncate(JSON.stringify(e.input||{}),80)}</span></div>`;
+        if (e.type === 'tool_result')
+          return `<div class="tool-event result"><span class="te-label">✓ ${e.name}</span><span class="te-body">${truncate(e.result,120)}</span></div>`;
+        if (e.type === 'tool_error')
+          return `<div class="tool-event err"><span class="te-label">✗ ${e.name}</span><span class="te-body">${e.error}</span></div>`;
+        if (e.type === 'status')
+          return `<div class="tool-event status"><span class="te-body">${e.text}</span></div>`;
+        return '';
+      }).join('');
+      bubbleEl.innerHTML = evHtml + fmt(aiMsg.content);
+      container.scrollTop = container.scrollHeight;
+    }
+
     while (!streamDone) {
-      const { done, value } = await reader.read();
+      let readResult;
+      try {
+        readResult = await reader.read();
+      } catch (readErr) {
+        if (readErr.name === 'AbortError') {
+          aiMsg.content += aiMsg.content ? '\n\n*（已停止）*' : '*(已停止)*';
+        } else {
+          if (!aiMsg.content) aiMsg.content = `❌ 请求失败：${readErr.message}`;
+        }
+        refreshBubble();
+        break;
+      }
+      const { done, value } = readResult;
       if (done) break;
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
@@ -826,28 +1010,43 @@ async function sendMsg() {
           const ev = JSON.parse(line.slice(6));
           handleSSE(ev, aiMsg);
           if (ev.type === 'done') streamDone = true;
-          // re-render streaming message
-          const newEl = buildMsgEl(aiMsg);
-          newEl.id = 'ai-streaming';
-          const old = document.getElementById('ai-streaming');
-          if (old) old.replaceWith(newEl);
-          container.scrollTop = container.scrollHeight;
+          if (ev.type === 'status') setStreamingUI(true, ev.text || 'AI 正在回复中…');
+          refreshBubble();
         } catch {}
       }
     }
 
-    if (streamDone) await reader.cancel().catch(() => {});
-
+    await reader.cancel().catch(() => {});
     saveSession();
   } catch (err) {
     showThinking(false);
-    if (!aiMsg.content) {
-      appendMsg({ role:'ai', content:`❌ 请求失败：${err.message}`, time:nowTime() });
+    if (err.name === 'AbortError') {
+      if (aiMsgAppended) {
+        if (!aiMsg.content) aiMsg.content = '*(已停止)*';
+        const b = document.querySelector('#ai-streaming .mbubble');
+        if (b) b.innerHTML = fmt(aiMsg.content);
+      }
+    } else {
+      if (!aiMsgAppended) {
+        appendMsg({ role:'ai', content:`❌ 请求失败：${err.message}\n\n请检查：\n• Bridge Server 是否已启动 (npm start)\n• API Key 是否正确\n• 网络连接是否正常`, time:nowTime(), isErr:true });
+      } else {
+        const b = document.querySelector('#ai-streaming .mbubble');
+        if (b) {
+          if (!aiMsg.content && !aiMsg.events.length) {
+            aiMsg.content = `❌ 请求失败：${err.message}`;
+            aiMsg.isErr = true;
+            b.classList.add('err-bubble');
+          }
+          b.innerHTML = fmt(aiMsg.content);
+        }
+      }
     }
+    saveSession();
   } finally {
     showThinking(false);
+    setStreamingUI(false);
     S.busy = false;
-    document.getElementById('sendBtn').disabled = false;
+    currentAbort = null;
   }
 }
 
@@ -870,6 +1069,11 @@ function showThinking(on) {
     <span class="t-label">正在思考...</span>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+function dismissGuide() {
+  document.getElementById('guideBanner').classList.add('hidden');
+  localStorage.setItem('sa_guide_dismissed', '1');
 }
 
 // ── UI helpers ──

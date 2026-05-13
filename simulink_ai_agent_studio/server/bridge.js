@@ -328,7 +328,7 @@ app.post('/api/disconnect', (req, res) => {
  *   data: {"type":"error","error":"..."}
  */
 app.post('/api/chat', async (req, res) => {
-  const { apiBase, apiKey, model, systemExtra, messages, userMessage, contextFiles } = req.body;
+  const { apiBase, apiKey, model, systemExtra, messages, userMessage, contextFiles, fileContents } = req.body;
 
   const effectiveApiKey = apiKey || process.env.LLM_API_KEY;
   const effectiveApiBase = apiBase || DEFAULT_LLM_API_BASE;
@@ -352,14 +352,28 @@ app.post('/api/chat', async (req, res) => {
       send('status', { text: `MCP is not connected (${e.message}); running in chat-only mode.` });
     }
 
+    // Build file context block from pre-read file contents
+    let fileContextBlock = '';
+    if (fileContents && fileContents.length > 0) {
+      const blocks = fileContents.map(f => {
+        if (f.content) {
+          return `### 文件：${f.name} (${f.path})\n\`\`\`\n${f.content}\n\`\`\`${f.truncated ? `\n*(仅显示前 200 行，共 ${f.totalLines} 行)*` : ''}`;
+        } else {
+          return `### 文件：${f.name} (${f.path})\n*(${f.note || '二进制文件，无法读取文本内容'})*`;
+        }
+      });
+      fileContextBlock = `\n\n## 用户已选中的工作区文件内容：\n${blocks.join('\n\n')}`;
+    } else if (contextFiles?.length) {
+      // fallback: just mention file names (old behaviour)
+      fileContextBlock = `\nUser has selected these workspace files: ${contextFiles.join(', ')}`;
+    }
+
     const systemPrompt = [
       'You are SimAgent, an expert AI assistant specialized in MATLAB and Simulink.',
       'You help users build, configure, analyze, and debug Simulink models.',
       'When MCP tools are available, use them to perform real operations on MATLAB/Simulink.',
       'Always reply in the same language as the user.',
-      contextFiles?.length
-        ? `User has selected these workspace files: ${contextFiles.join(', ')}`
-        : '',
+      fileContextBlock,
       systemExtra || ''
     ].filter(Boolean).join('\n');
 
@@ -388,6 +402,66 @@ app.get('/api/workspace', (req, res) => {
     res.json({ ok: true, files });
   } catch (err) {
     res.json({ ok: false, error: err.message, files: [] });
+  }
+});
+
+/**
+ * POST /api/readfile
+ * Body: { filePath: "C:/workspace/pid.m" }
+ * Returns: { ok, name, path, size, encoding, content }
+ *
+ * Readable text files (.m .mlx .mat metadata): returns UTF-8 text content.
+ * Binary files (.slx .mdl .mat): returns a summary instead of raw bytes.
+ */
+app.post('/api/readfile', (req, res) => {
+  const fs = require('fs');
+  const { filePath } = req.body;
+  if (!filePath) return res.status(400).json({ ok: false, error: 'filePath required' });
+
+  // Security: only allow whitelisted extensions
+  const allowed = /\.(m|mlx|mat|slx|mdl|txt|csv|json|xml|log)$/i;
+  if (!allowed.test(filePath)) {
+    return res.status(403).json({ ok: false, error: 'File type not allowed' });
+  }
+
+  try {
+    const stat = fs.statSync(filePath);
+    const sizeMB = stat.size / 1024 / 1024;
+    const name = path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+
+    // Text-readable extensions
+    const textExts = ['.m', '.mlx', '.txt', '.csv', '.json', '.xml', '.log'];
+    if (textExts.includes(ext)) {
+      if (sizeMB > 2) {
+        // Too large: read first 200 lines only
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const lines = raw.split('\n');
+        const preview = lines.slice(0, 200).join('\n');
+        return res.json({
+          ok: true, name, path: filePath,
+          size: stat.size,
+          encoding: 'utf-8',
+          truncated: true,
+          totalLines: lines.length,
+          content: preview,
+          note: `文件较大 (${sizeMB.toFixed(1)} MB)，仅显示前 200 行`
+        });
+      }
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return res.json({ ok: true, name, path: filePath, size: stat.size, encoding: 'utf-8', truncated: false, content });
+    }
+
+    // Binary files (.slx .mdl .mat): can't read as text, return metadata summary
+    return res.json({
+      ok: true, name, path: filePath, size: stat.size,
+      encoding: 'binary',
+      content: null,
+      note: `${ext.toUpperCase()} 是二进制文件，无法直接读取文本内容。文件路径已传给 AI，请通过 MCP 工具操作该文件。`
+    });
+
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
